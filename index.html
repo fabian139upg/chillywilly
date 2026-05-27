@@ -130,11 +130,12 @@ input[type=file]{
 <button class="add-btn" onclick="openGallery()">+</button>
 
 <script type="module">
+  // Importar las herramientas necesarias desde las URLs oficiales de Firebase (CDN)
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+  import { getDatabase, ref, push, onValue, remove, query, orderByKey } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
   import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
-  // 2. CONFIGURACIÓN DE TU PROYECTO (Tomada de tu captura de pantalla)
+  // Configuración de las credenciales de tu proyecto de Firebase
   const firebaseConfig = {
     apiKey: "AIzaSyBwpFRDEG08ePk7HnAAe8m0a5J7LRvpjZo",
     authDomain: "recuerdos-430a2.firebaseapp.com",
@@ -145,106 +146,124 @@ input[type=file]{
     appId: "1:979657774563:web:0854f28c5249299a647cd6"
   };
 
-  // Inicializar Firebase
+  // Inicializar los servicios de Firebase
   const app = initializeApp(firebaseConfig);
   const db = getDatabase(app);
   const storage = getStorage(app);
 
-  // Escuchar la base de datos en tiempo real
+  // Referencia a la colección "recuerdos" en la base de datos
   const recuerdosRef = ref(db, 'recuerdos');
   
-  onValue(recuerdosRef, (snapshot) => {
-      const wall = document.getElementById("wall");
-      wall.innerHTML = "";
-      
-      const data = snapshot.val();
-      if (data) {
-          // Convertimos el objeto en array y lo invertimos para ver lo más nuevo primero
-          Object.keys(data).reverse().forEach((key) => {
-              const memory = data[key];
-              wall.innerHTML += `
-              <div class="card">
-                  <img src="${memory.image}" alt="Recuerdo">
-                  <div class="card-content">
-                      <p>${memory.text}</p>
-                      <button class="delete-btn" data-id="${key}" data-storagepath="${memory.storagePath}">
-                      🗑️ Borrar
-                      </button>
-                  </div>
-              </div>
-              `;
-          });
+  // Consulta ordenada para traer los datos desde Firebase de forma consistente
+  const recuerdosQuery = query(recuerdosRef, orderByKey());
 
-          // Añadir eventos a los botones de borrar creados dinámicamente
-          document.querySelectorAll('.delete-btn').forEach(btn => {
-              btn.addEventListener('click', function() {
-                  const id = this.getAttribute('data-id');
-                  const storagePath = this.getAttribute('data-storagepath');
-                  deleteMemory(id, storagePath);
-              });
+  // Escuchar la base de datos en tiempo real
+  onValue(recuerdosQuery, (snapshot) => {
+      const wall = document.getElementById("wall");
+      wall.innerHTML = ""; // Limpiar el muro antes de renderizar
+      
+      const elementos = [];
+      
+      // Recorrer los datos respetando el orden de la consulta
+      snapshot.forEach((childSnapshot) => {
+          elementos.push({
+              key: childSnapshot.key, // ID único del recuerdo (generado por Firebase)
+              value: childSnapshot.val() // Objeto con la información (image, text, storagePath)
           });
-      }
+      });
+
+      // Invertimos el array para que el recuerdo más nuevo aparezca arriba/primero
+      elementos.reverse().forEach((item) => {
+          const idUnico = item.key;
+          const memory = item.value;
+          
+          wall.innerHTML += `
+          <div class="card">
+              <img src="${memory.image}" alt="Recuerdo">
+              <div class="card-content">
+                  <p>${memory.text}</p>
+                  <button class="delete-btn" data-id="${idUnico}" data-storagepath="${memory.storagePath}">
+                  🗑️ Borrar
+                  </button>
+              </div>
+          </div>
+          `;
+      });
+
+      // Asignar los eventos de clic a cada botón de borrar generado
+      document.querySelectorAll('.delete-btn').forEach(btn => {
+          btn.addEventListener('click', function() {
+              const id = this.getAttribute('data-id');
+              const storagePath = this.getAttribute('data-storagepath');
+              deleteMemory(id, storagePath);
+          });
+      });
   });
 
-  // Función para subir un nuevo recuerdo
+  // Evento para capturar cuando se selecciona una foto nueva
   document.getElementById("fileInput").addEventListener("change", async function(){
       const file = this.files[0];
       if(!file) return;
 
       const text = prompt("Escribe un recuerdo ✨") || "💖 Un momento especial";
       
-      // Mostrar un mensaje temporal de "subiendo..."
-      alert("Subiendo tu foto... por favor espera un momento.");
+      alert("Subiendo tu recuerdo a la nube... Por favor espera.");
 
       try {
-          // 1. Subir la imagen a Firebase Storage con un nombre único basado en el tiempo
+          // 1. Crear un nombre único de archivo usando la marca de tiempo actual
           const nombreArchivo = `${Date.now()}_${file.name}`;
           const rutaAlmacenamiento = `fotos/${nombreArchivo}`;
           const fotoRef = storageRef(storage, rutaAlmacenamiento);
           
+          // 2. Subir el archivo binario de la imagen a Firebase Storage
           await uploadBytes(fotoRef, file);
           
-          // 2. Obtener el enlace URL público de la foto subida
+          // 3. Obtener el enlace URL de descarga pública de la imagen
           const urlFoto = await getDownloadURL(fotoRef);
 
-          // 3. Guardar en Realtime Database los datos del recuerdo
+          // 4. Guardar el registro en la Realtime Database
           await push(recuerdosRef, {
               image: urlFoto,
               text: text,
-              storagePath: rutaAlmacenamiento // Guardamos la ruta para poder borrar la foto después
+              storagePath: rutaAlmacenamiento // Guardamos la ruta exacta para poder borrar el archivo físico después
           });
 
+          // Limpiar el input para que permita volver a subir la misma foto si se desea
+          this.value = "";
+
       } catch (error) {
-          console.error("Error al subir el recuerdo:", error);
-          alert("Hubo un error al subir tu recuerdo. Revisa las reglas de seguridad de tu Firebase.");
+          console.error("Error completo al guardar el recuerdo:", error);
+          alert("Hubo un error al subir los datos. Verifica que las reglas de Realtime Database y Storage estén en 'true'.");
       }
   });
 
-  // Función para borrar un recuerdo
+  // Función interna para borrar un recuerdo de la nube de forma segura
   async function deleteMemory(id, storagePath){
-      if(confirm("¿Borrar este recuerdo para todos?")){
+      if(confirm("¿Estás seguro de que quieres borrar este recuerdo para siempre?")){
           try {
-              // 1. Borrar la foto de Firebase Storage
+              // 1. Si existe la ruta del archivo, borrar primero la foto física en Storage
               if(storagePath) {
                   const fotoRef = storageRef(storage, storagePath);
                   await deleteObject(fotoRef);
               }
-              // 2. Borrar el registro de la Base de Datos
+              
+              // 2. Borrar el registro del texto y enlace de la Realtime Database usando su ID único
               const registroRef = ref(db, `recuerdos/${id}`);
               await remove(registroRef);
+              
           } catch (error) {
-              console.error("Error al borrar:", error);
-              alert("No se pudo borrar el elemento.");
+              console.error("Error al intentar eliminar de Firebase:", error);
+              alert("No se pudo borrar el elemento. Revisa los permisos.");
           }
       }
   }
 </script>
 
 <script>
-// Mantener la función de abrir galería accesible desde el botón HTML
-function openGallery(){
-    document.getElementById("fileInput").click();
-}
+  // Esta función se mantiene global para que el botón HTML pueda llamarla directamente
+  function openGallery(){
+      document.getElementById("fileInput").click();
+  }
 </script>
 
 </body>
