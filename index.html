@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Muro de Mejores Amigos</title>
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family: Arial, sans-serif;
+}
+
+body{
+    background: #020024;
+background: linear-gradient(90deg,rgba(2, 0, 36, 1) 0%, rgba(50, 9, 121, 1) 35%, rgba(123, 8, 255, 1) 100%);
+    min-height:100vh;
+    padding:30px;
+}
+
+h1{
+    text-align:center;
+    color:white;
+    margin-bottom:30px;
+    font-size:2.5rem;
+}
+
+/* 4 fotos por fila */
+.wall{
+    display:grid;
+    grid-template-columns:repeat(4, 1fr);
+    gap:20px;
+}
+
+/* responsive */
+@media(max-width:1000px){
+    .wall{
+        grid-template-columns:repeat(3,1fr);
+    }
+}
+
+@media(max-width:700px){
+    .wall{
+        grid-template-columns:repeat(2,1fr);
+    }
+}
+
+@media(max-width:500px){
+    .wall{
+        grid-template-columns:1fr;
+    }
+}
+
+.card{
+    background:white;
+    border-radius:20px;
+    overflow:hidden;
+    box-shadow:0 5px 20px rgba(0,0,0,.2);
+    transition:.3s;
+}
+
+.card:hover{
+    transform:scale(1.02);
+}
+
+/* tamaño fijo uniforme */
+.card img{
+    width:100%;
+    aspect-ratio:1/1;
+    object-fit:cover;
+    display:block;
+}
+
+.card-content{
+    padding:12px;
+}
+
+.card-content p{
+    color:#444;
+    font-size:14px;
+    margin-bottom:10px;
+    text-align:center;
+}
+
+.delete-btn{
+    width:100%;
+    border:none;
+    background:#351745;
+    color:white;
+    padding:10px;
+    border-radius:12px;
+    cursor:pointer;
+    font-size:15px;
+}
+
+.add-btn{
+    position:fixed;
+    bottom:30px;
+    right:30px;
+    width:75px;
+    height:75px;
+    border-radius:50%;
+    border:none;
+    font-size:40px;
+    background:#ff4f87;
+    color:white;
+    cursor:pointer;
+    box-shadow:0 5px 20px rgba(0,0,0,.3);
+}
+
+.add-btn:hover{
+    transform:scale(1.1);
+}
+
+input[type=file]{
+    display:none;
+}
+</style>
+</head>
+<body>
+
+<h1>💖 Nuestro Muro de Mejores Amigos 💖</h1>
+
+<div class="wall" id="wall"></div>
+
+<input type="file" id="fileInput" accept="image/*">
+
+<button class="add-btn" onclick="openGallery()">+</button>
+
+<script>
+let memories = JSON.parse(
+    localStorage.getItem("friendMemories")
+) || [];
+
+function renderWall(){
+
+    const wall = document.getElementById("wall");
+    wall.innerHTML = "";
+
+    memories.forEach((memory,index)=>{
+
+        wall.innerHTML += `
+        <div class="card">
+
+            <img src="${memory.image}" alt="">
+
+            <div class="card-content">
+                <p>${memory.text}</p>
+
+                <button class="delete-btn"
+                onclick="deleteMemory(${index})">
+                🗑️ Borrar
+                </button>
+            </div>
+        </div>
+        `;
+    });
+}
+
+function openGallery(){
+    document.getElementById("fileInput").click();
+}
+
+document.getElementById("fileInput")
+.addEventListener("change", function(){
+
+    const file = this.files[0];
+
+    if(!file) return;
+
+    const text = prompt(
+        "Escribe un recuerdo ✨"
+    ) || "💖 Un momento especial";
+
+    const reader = new FileReader();
+
+    reader.onload = function(e){
+
+        memories.unshift({
+            image:e.target.result,
+            text:text
+        });
+
+        localStorage.setItem(
+            "friendMemories",
+            JSON.stringify(memories)
+        );
+
+        renderWall();
+    };
+
+    reader.readAsDataURL(file);
+});
+
+function deleteMemory(index){
+
+    if(confirm("¿Borrar este recuerdo?")){
+        memories.splice(index,1);
+
+        localStorage.setItem(
+            "friendMemories",
+            JSON.stringify(memories)
+        );
+
+        renderWall();
+    }
+}
+
+renderWall();
+</script>
+
+</body>
+</html>
