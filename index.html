@@ -27,31 +27,15 @@ h1{
     font-size:2.5rem;
 }
 
-/* 4 fotos por fila */
 .wall{
     display:grid;
     grid-template-columns:repeat(4, 1fr);
     gap:20px;
 }
 
-/* responsive */
-@media(max-width:1000px){
-    .wall{
-        grid-template-columns:repeat(3,1fr);
-    }
-}
-
-@media(max-width:700px){
-    .wall{
-        grid-template-columns:repeat(2,1fr);
-    }
-}
-
-@media(max-width:500px){
-    .wall{
-        grid-template-columns:1fr;
-    }
-}
+@media(max-width:1000px){ .wall{ grid-template-columns:repeat(3,1fr); } }
+@media(max-width:700px){ .wall{ grid-template-columns:repeat(2,1fr); } }
+@media(max-width:500px){ .wall{ grid-template-columns:1fr; } }
 
 .card{
     background:white;
@@ -61,11 +45,8 @@ h1{
     transition:.3s;
 }
 
-.card:hover{
-    transform:scale(1.02);
-}
+.card:hover{ transform:scale(1.02); }
 
-/* tamaño fijo uniforme */
 .card img{
     width:100%;
     aspect-ratio:1/1;
@@ -73,9 +54,7 @@ h1{
     display:block;
 }
 
-.card-content{
-    padding:12px;
-}
+.card-content{ padding:12px; }
 
 .card-content p{
     color:#444;
@@ -110,9 +89,7 @@ h1{
     box-shadow:0 5px 20px rgba(0,0,0,.3);
 }
 
-.add-btn:hover{
-    transform:scale(1.1);
-}
+.add-btn:hover{ transform:scale(1.1); }
 
 input[type=file]{
     display:none;
@@ -126,53 +103,39 @@ input[type=file]{
 <div class="wall" id="wall"></div>
 
 <input type="file" id="fileInput" accept="image/*">
-
 <button class="add-btn" onclick="openGallery()">+</button>
 
 <script type="module">
-  // Importar las herramientas necesarias desde las URLs oficiales de Firebase (CDN)
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import { getDatabase, ref, push, onValue, remove, query, orderByKey } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-  import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
-  // Configuración actualizada con los datos de tu nueva imagen (fotos-c03f6)
   const firebaseConfig = {
     apiKey: "AIzaSyDufOv5obzEL7GR941iAveqhQud7Jx1bro",
     authDomain: "fotos-c03f6.firebaseapp.com",
-    databaseURL: "https://fotos-c03f6-default-rtdb.firebaseio.com", // Generada automáticamente bajo el estándar de Firebase
+    databaseURL: "https://fotos-c03f6-default-rtdb.firebaseio.com",
     projectId: "fotos-c03f6",
-    storageBucket: "fotos-c03f6.firebasestorage.app",
     messagingSenderId: "1027767466212",
     appId: "1:1027767466212:web:ce5626a7c0abac00bc54f1"
   };
 
-  // Inicializar los servicios de Firebase
   const app = initializeApp(firebaseConfig);
   const db = getDatabase(app);
-  const storage = getStorage(app);
-
-  // Referencia a la colección "recuerdos" en la base de datos
   const recuerdosRef = ref(db, 'recuerdos');
-  
-  // Consulta ordenada para traer los datos desde Firebase de forma consistente
   const recuerdosQuery = query(recuerdosRef, orderByKey());
 
-  // Escuchar la base de datos en tiempo real
+  // Escuchar la base de datos gratuita en tiempo real
   onValue(recuerdosQuery, (snapshot) => {
       const wall = document.getElementById("wall");
-      wall.innerHTML = ""; // Limpiar el muro antes de renderizar
-      
+      wall.innerHTML = ""; 
       const elementos = [];
       
-      // Recorrer los datos respetando el orden de la consulta
       snapshot.forEach((childSnapshot) => {
           elementos.push({
-              key: childSnapshot.key, // ID único del recuerdo (generado por Firebase)
-              value: childSnapshot.val() // Objeto con la información (image, text, storagePath)
+              key: childSnapshot.key,
+              value: childSnapshot.val()
           });
       });
 
-      // Invertimos el array para que el recuerdo más nuevo aparezca arriba/primero
       elementos.reverse().forEach((item) => {
           const idUnico = item.key;
           const memory = item.value;
@@ -182,7 +145,7 @@ input[type=file]{
               <img src="${memory.image}" alt="Recuerdo">
               <div class="card-content">
                   <p>${memory.text}</p>
-                  <button class="delete-btn" data-id="${idUnico}" data-storagepath="${memory.storagePath}">
+                  <button class="delete-btn" data-id="${idUnico}">
                   🗑️ Borrar
                   </button>
               </div>
@@ -190,77 +153,57 @@ input[type=file]{
           `;
       });
 
-      // Asignar los eventos de clic a cada botón de borrar generado
       document.querySelectorAll('.delete-btn').forEach(btn => {
           btn.addEventListener('click', function() {
               const id = this.getAttribute('data-id');
-              const storagePath = this.getAttribute('data-storagepath');
-              deleteMemory(id, storagePath);
+              deleteMemory(id);
           });
       });
   });
 
-  // Evento para capturar cuando se selecciona una foto nueva
-  document.getElementById("fileInput").addEventListener("change", async function(){
+  // Capturar el archivo JPG o PNG seleccionado
+  document.getElementById("fileInput").addEventListener("change", function(){
       const file = this.files[0];
       if(!file) return;
 
       const text = prompt("Escribe un recuerdo ✨") || "💖 Un momento especial";
       
-      alert("Subiendo tu recuerdo a la nube... Por favor espera.");
+      // Convertir la imagen PNG/JPG a texto Base64 para guardarla gratis
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+          const base64Image = reader.result; // Aquí está tu foto convertida en texto plano
 
-      try {
-          // 1. Crear un nombre único de archivo usando la marca de tiempo actual
-          const nombreArchivo = `${Date.now()}_${file.name}`;
-          const rutaAlmacenamiento = `fotos/${nombreArchivo}`;
-          const fotoRef = storageRef(storage, rutaAlmacenamiento);
-          
-          // 2. Subir el archivo binario de la imagen a Firebase Storage
-          await uploadBytes(fotoRef, file);
-          
-          // 3. Obtener el enlace URL de descarga pública de la imagen
-          const urlFoto = await getDownloadURL(fotoRef);
-
-          // 4. Guardar el registro en la Realtime Database
-          await push(recuerdosRef, {
-              image: urlFoto,
-              text: text,
-              storagePath: rutaAlmacenamiento // Guardamos la ruta exacta para poder borrar el archivo físico después
-          });
-
-          // Limpiar el input para que permita volver a subir la misma foto si se desea
-          this.value = "";
-
-      } catch (error) {
-          console.error("Error completo al guardar el recuerdo:", error);
-          alert("Hubo un error al subir los datos. Verifica que las reglas de Realtime Database y Storage estén en modo de prueba o públicas.");
-      }
+          try {
+              // Guardar directo en Realtime Database (100% Gratis)
+              await push(recuerdosRef, {
+                  image: base64Image,
+                  text: text
+              });
+              
+              document.getElementById("fileInput").value = ""; // Limpiar
+          } catch (error) {
+              console.error(error);
+              alert("Error al subir. Asegúrate de tener activa la Realtime Database con sus reglas en 'true'.");
+          }
+      };
+      
+      reader.readAsDataURL(file);
   });
 
-  // Función interna para borrar un recuerdo de la nube de forma segura
-  async function deleteMemory(id, storagePath){
-      if(confirm("¿Estás seguro de que quieres borrar este recuerdo para siempre?")){
+  // Eliminar recuerdo de la base de datos
+  async function deleteMemory(id){
+      if(confirm("¿Quieres borrar este recuerdo?")){
           try {
-              // 1. Si existe la ruta del archivo, borrar primero la foto física en Storage
-              if(storagePath) {
-                  const fotoRef = storageRef(storage, storagePath);
-                  await deleteObject(fotoRef);
-              }
-              
-              // 2. Borrar el registro del texto y enlace de la Realtime Database usando su ID único
               const registroRef = ref(db, `recuerdos/${id}`);
               await remove(registroRef);
-              
           } catch (error) {
-              console.error("Error al intentar eliminar de Firebase:", error);
-              alert("No se pudo borrar el elemento. Revisa los permisos.");
+              alert("No se pudo borrar.");
           }
       }
   }
 </script>
 
 <script>
-  // Esta función se mantiene global para que el botón HTML pueda llamarla directamente
   function openGallery(){
       document.getElementById("fileInput").click();
   }
