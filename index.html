@@ -135,15 +135,15 @@ input[type=file]{
   import { getDatabase, ref, push, onValue, remove, query, orderByKey } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
   import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
-  // Configuración de las credenciales de tu proyecto de Firebase
+  // Configuración actualizada con los datos de tu nueva imagen (fotos-c03f6)
   const firebaseConfig = {
-    apiKey: "AIzaSyBwpFRDEG08ePk7HnAAe8m0a5J7LRvpjZo",
-    authDomain: "recuerdos-430a2.firebaseapp.com",
-    databaseURL: "https://recuerdos-430a2-default-rtdb.firebaseio.com",
-    projectId: "recuerdos-430a2",
-    storageBucket: "recuerdos-430a2.firebasestorage.app",
-    messagingSenderId: "979657774563",
-    appId: "1:979657774563:web:0854f28c5249299a647cd6"
+    apiKey: "AIzaSyDufOv5obzEL7GR941iAveqhQud7Jx1bro",
+    authDomain: "fotos-c03f6.firebaseapp.com",
+    databaseURL: "https://fotos-c03f6-default-rtdb.firebaseio.com", // Generada automáticamente bajo el estándar de Firebase
+    projectId: "fotos-c03f6",
+    storageBucket: "fotos-c03f6.firebasestorage.app",
+    messagingSenderId: "1027767466212",
+    appId: "1:1027767466212:web:ce5626a7c0abac00bc54f1"
   };
 
   // Inicializar los servicios de Firebase
@@ -233,7 +233,7 @@ input[type=file]{
 
       } catch (error) {
           console.error("Error completo al guardar el recuerdo:", error);
-          alert("Hubo un error al subir los datos. Verifica que las reglas de Realtime Database y Storage estén en 'true'.");
+          alert("Hubo un error al subir los datos. Verifica que las reglas de Realtime Database y Storage estén en modo de prueba o públicas.");
       }
   });
 
